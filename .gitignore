@@ -16,7 +16,6 @@ dist/
 .DS_Store
 Thumbs.db
 project_summary.txt
-test_api.py
 .pytest_cache/
 .coverage
 htmlcov/

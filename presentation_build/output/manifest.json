@@ -1,0 +1,32 @@
+{
+  "pptx": "C:\\Users\\aacer\\Documents\\bioagents\\presentation_build\\output\\BioAgents_Presentation.pptx",
+  "sourcePreviews": [
+    "C:\\Users\\aacer\\Documents\\bioagents\\presentation_build\\previews\\source_slide_01.png",
+    "C:\\Users\\aacer\\Documents\\bioagents\\presentation_build\\previews\\source_slide_02.png",
+    "C:\\Users\\aacer\\Documents\\bioagents\\presentation_build\\previews\\source_slide_03.png",
+    "C:\\Users\\aacer\\Documents\\bioagents\\presentation_build\\previews\\source_slide_04.png",
+    "C:\\Users\\aacer\\Documents\\bioagents\\presentation_build\\previews\\source_slide_05.png",
+    "C:\\Users\\aacer\\Documents\\bioagents\\presentation_build\\previews\\source_slide_06.png",
+    "C:\\Users\\aacer\\Documents\\bioagents\\presentation_build\\previews\\source_slide_07.png",
+    "C:\\Users\\aacer\\Documents\\bioagents\\presentation_build\\previews\\source_slide_08.png",
+    "C:\\Users\\aacer\\Documents\\bioagents\\presentation_build\\previews\\source_slide_09.png",
+    "C:\\Users\\aacer\\Documents\\bioagents\\presentation_build\\previews\\source_slide_10.png"
+  ],
+  "pptxParity": {
+    "ok": true,
+    "previews": [
+      "presentation_build/previews/saved_pptx_slide_01.png",
+      "presentation_build/previews/saved_pptx_slide_02.png",
+      "presentation_build/previews/saved_pptx_slide_03.png",
+      "presentation_build/previews/saved_pptx_slide_04.png",
+      "presentation_build/previews/saved_pptx_slide_05.png",
+      "presentation_build/previews/saved_pptx_slide_06.png",
+      "presentation_build/previews/saved_pptx_slide_07.png",
+      "presentation_build/previews/saved_pptx_slide_08.png",
+      "presentation_build/previews/saved_pptx_slide_09.png",
+      "presentation_build/previews/saved_pptx_slide_10.png"
+    ],
+    "error": null
+  },
+  "slideCount": 10
+}

@@ -23,7 +23,7 @@ class LLMService(BioAgentService):
         timeout: float = 30.0,
     ) -> None:
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.model = model or os.getenv("OPENAI_MODEL") or "gpt-5.4-mini"
+        self.model = model or os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
         self.timeout = timeout
         self.last_error: str | None = None
         self.last_source = "openai-primary" if self.api_key else "local-fallback"
@@ -110,12 +110,13 @@ class LLMService(BioAgentService):
 
         body = {
             "model": self.model,
-            "input": [
+            "messages": [
                 {
                     "role": "system",
                     "content": (
                         "You are BioAgents, a careful assistant for catalyst, enzyme, "
-                        "and synthetic biology screening. Be concise and uncertainty-aware."
+                        "and synthetic biology screening. Be concise and uncertainty-aware. "
+                        "Always respond with valid JSON if requested."
                     ),
                 },
                 {
@@ -123,7 +124,7 @@ class LLMService(BioAgentService):
                     "content": f"{prompt}\n\nData:\n{json.dumps(data, sort_keys=True)}",
                 },
             ],
-            "store": False,
+            "response_format": {"type": "json_object"} if "JSON" in prompt else None
         }
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -131,7 +132,7 @@ class LLMService(BioAgentService):
         }
         try:
             response = requests.post(
-                "https://api.openai.com/v1/responses",
+                "https://api.openai.com/v1/chat/completions",
                 headers=headers,
                 json=body,
                 timeout=self.timeout,
@@ -165,11 +166,24 @@ class LLMService(BioAgentService):
 
     @staticmethod
     def _extract_response_text(payload: dict[str, Any]) -> str:
+        # Chat Completions standard
+        choices = payload.get("choices", [])
+        if choices and isinstance(choices, list):
+            message = choices[0].get("message", {})
+            if isinstance(message, dict) and message.get("content"):
+                return message["content"].strip()
+
+        # Fallback for alternative/legacy formats
         if isinstance(payload.get("output_text"), str):
             return payload["output_text"].strip()
+        
         chunks = []
         for item in payload.get("output", []):
+            if not isinstance(item, dict):
+                continue
             for content in item.get("content", []):
+                if not isinstance(content, dict):
+                    continue
                 if content.get("type") in {"output_text", "text"} and isinstance(content.get("text"), str):
                     chunks.append(content["text"])
         return "\n".join(chunks).strip()

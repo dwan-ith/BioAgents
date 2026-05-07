@@ -36,8 +36,12 @@ class DatabaseService(BioAgentService):
 
         row = rows[0]
         synonyms = self._fetch_synonyms(slug)
+        cid_raw = row.get("CID")
+        if cid_raw is None:
+             raise ExternalAPIError("PubChem returned properties but missing CID.")
+             
         return PubChemCompound(
-            cid=int(row.get("CID")),
+            cid=int(cid_raw),
             iupac_name=row.get("IUPACName"),
             molecular_formula=row.get("MolecularFormula"),
             molecular_weight=self._float_or_none(row.get("MolecularWeight")),
