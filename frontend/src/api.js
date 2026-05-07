@@ -1,7 +1,9 @@
 const configuredBase = (process.env.REACT_APP_API_BASE_URL || '').replace(/\/$/, '');
+const isLocalDev = ['3000', '3001'].includes(window.location.port)
+  || ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 export const API_BASE_URL = configuredBase
-  || (window.location.port === '3000' ? 'http://localhost:5000' : '');
+  || (isLocalDev ? 'http://localhost:5000' : '/api');
 
 export const apiUrl = (path) => `${API_BASE_URL}${path}`;
 

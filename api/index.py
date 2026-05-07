@@ -1,6 +1,12 @@
-from server import app
+"""Vercel Python function entrypoint for the BioAgents Flask app."""
 
-# Vercel needs the Flask app to be available as 'app' or 'handler'
-# Since we already have 'app' in server.py, we just import it.
-# We can also add a prefix if we want, but it's easier to handle
-# routing in vercel.json.
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from server import app  # noqa: E402

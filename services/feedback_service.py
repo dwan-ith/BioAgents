@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,7 +19,12 @@ class FeedbackService(BioAgentService):
 
     def __init__(self, path: str | Path | None = None) -> None:
         configured = path or os.getenv("BIOAGENTS_FEEDBACK_LOG")
-        self.path = Path(configured) if configured else Path("data") / "experiment_logs.jsonl"
+        if configured:
+            self.path = Path(configured)
+        elif os.getenv("VERCEL"):
+            self.path = Path(tempfile.gettempdir()) / "bioagents_experiment_logs.jsonl"
+        else:
+            self.path = Path("data") / "experiment_logs.jsonl"
 
     def log_experiment(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(payload, dict):

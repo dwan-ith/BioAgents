@@ -1,0 +1,3 @@
+# Optional distributed-agent runtime.
+# Install this only when you want to run main.py or the standalone agents.
+uagents>=0.13.0

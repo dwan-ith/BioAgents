@@ -94,6 +94,7 @@ def _handle_unexpected_error(exc: Exception):
     }), 500
 
 
+@app.get("/api/health")
 @app.get("/health")
 def health_check():
     return jsonify({
@@ -104,6 +105,7 @@ def health_check():
     })
 
 
+@app.get("/api/agents/status")
 @app.get("/agents/status")
 def agents_status():
     return jsonify({
@@ -117,12 +119,14 @@ def agents_status():
     })
 
 
+@app.get("/api/molecules")
 @app.get("/molecules")
 def molecules():
     graph = _compound.get_knowledge_graph()
     return jsonify(graph.to_dict())
 
 
+@app.post("/api/query")
 @app.post("/query")
 def handle_query():
     body = _json_body()
@@ -173,12 +177,14 @@ def handle_query():
     )
 
 
+@app.post("/api/experiments/log")
 @app.post("/experiments/log")
 def log_experiment():
     entry = _feedback.log_experiment(_json_body())
     return jsonify(entry), 201
 
 
+@app.get("/api/experiments/logs")
 @app.get("/experiments/logs")
 def get_experiment_logs():
     return jsonify({"logs": _feedback.get_all_logs()})

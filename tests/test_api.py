@@ -21,6 +21,17 @@ class BioAgentsApiTests(unittest.TestCase):
         self.assertEqual(payload["mode"], "local-fallback")
         self.assertFalse(payload["openai_available"])
 
+    def test_vercel_api_prefix_routes_to_flask_app(self):
+        health = self.client.get("/api/health")
+        query = self.client.post("/api/query", json={
+            "type": "compound",
+            "molecule": "HZSM_5",
+        })
+
+        self.assertEqual(health.status_code, 200)
+        self.assertEqual(query.status_code, 200)
+        self.assertEqual(query.get_json()["molecule"], "HZSM_5")
+
     def test_compound_query_uses_local_knowledge_base(self):
         response = self.client.post("/query", json={
             "type": "compound",
