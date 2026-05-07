@@ -30,9 +30,22 @@ BioAgents is a multi-agent system where each molecule is an autonomous AI agent.
 The default Flask API does not require a uAgents Bureau. It imports the
 committed `services/` package directly so a fresh clone can run immediately.
 
-## Optional uAgents Runtime
+## Deploy on Vercel
+This repository is configured for Vercel from the repo root:
+
+- `vercel.json` builds the React app from `frontend/`.
+- `api/index.py` exposes the Flask app as a Vercel Python Function.
+- The frontend calls `/api` in production and `http://localhost:5000` in local React dev.
+
+In Vercel project settings, use the repository root as the Root Directory and keep the detected
+framework as "Other" if prompted. Add `OPENAI_API_KEY` as an environment variable only if you want
+OpenAI-primary analysis; otherwise the local fallback still works. For local Vercel testing, use
+Vercel CLI `48.2.10` or newer for Flask support.
+
+## uAgents Runtime
 Run these only if you want the standalone distributed-agent experiment:
 
+   - `pip install -r requirements-agents.txt`
    - `python main.py` to start all agents in one Bureau, or
    - run agents in separate terminals:
    - `python agents/compound_agent.py`
@@ -49,4 +62,3 @@ Run the backend regression suite:
 ```bash
 python -m unittest discover -s tests -v
 ```
-
