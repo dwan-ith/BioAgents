@@ -10,3 +10,4 @@ requests>=2.31.0
 
 # Optional: LLM integration (only required if OPENAI_API_KEY is set)
 # openai>=1.0.0
+python-dotenv>=1.0.0

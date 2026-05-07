@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Paper, Typography, List, ListItem, ListItemText, CircularProgress, Chip } from '@mui/material';
+import { Paper, Typography, Chip, Box, CircularProgress } from '@mui/material';
 import { getJSON } from '../api';
 
 const AgentDashboard = () => {
@@ -11,7 +11,7 @@ const AgentDashboard = () => {
       const data = await getJSON('/agents/status');
       setAgents(data);
     } catch (e) {
-      console.error("Failed to fetch agent status", e);
+      console.error('Failed to fetch agent status', e);
       setAgents({});
     } finally {
       setLoading(false);
@@ -20,42 +20,43 @@ const AgentDashboard = () => {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 3000);
+    const interval = setInterval(fetchStatus, 10000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <Paper elevation={4} style={{ padding: '20px', backgroundColor: '#1e1e1e', color: '#fff', borderRadius: '12px' }}>
-      <Typography variant="h5" gutterBottom style={{ fontWeight: 'bold', color: '#90caf9' }}>
+    <Paper elevation={2} style={{ padding: '20px', backgroundColor: '#1e1e1e', color: '#fff', borderRadius: '12px', height: '100%' }}>
+      <Typography variant="subtitle2" gutterBottom style={{ color: '#90caf9', fontWeight: 'bold', marginBottom: '16px' }}>
         Service Runtime
       </Typography>
-      
+
       {loading ? (
-        <CircularProgress color="secondary" />
+        <CircularProgress color="secondary" size={20} />
+      ) : Object.keys(agents).length === 0 ? (
+        <Typography variant="caption" style={{ color: '#ff6666' }}>Cannot connect to BioAgents API</Typography>
       ) : (
-        <List>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {Object.entries(agents).map(([name, info]) => (
-            <ListItem key={name} style={{ borderBottom: '1px solid #333' }}>
-              <ListItemText 
-                primary={<Typography style={{fontWeight: 'bold'}}>{name}</Typography>} 
-                secondary={
-                   <Typography variant="caption" style={{color: '#aaa', wordBreak: 'break-all'}}>
-                       {info.address}
-                   </Typography>
-                } 
-              />
-              <Chip 
-                label={info.status} 
-                color={info.status === 'Ready' ? 'success' : 'error'} 
-                size="small" 
-                style={{ fontWeight: 'bold' }}
-              />
-            </ListItem>
+          <Chip
+              key={name}
+              icon={
+                <span style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  backgroundColor: info.status === 'Ready' ? '#4caf50' : '#ff5252',
+                  display: 'inline-block', marginLeft: 6,
+                }} />
+              }
+              label={name}
+              size="small"
+              variant="outlined"
+              style={{
+                borderColor: info.status === 'Ready' ? '#4caf50' : '#ff5252',
+                color: info.status === 'Ready' ? '#4caf50' : '#ff5252',
+                fontSize: '0.72rem',
+              }}
+            />
           ))}
-          {Object.keys(agents).length === 0 && (
-            <Typography style={{ color: '#ff6666' }}>Cannot connect to BioAgents API</Typography>
-          )}
-        </List>
+        </Box>
       )}
     </Paper>
   );

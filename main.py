@@ -13,8 +13,10 @@ from agents.analysis_agent import agent as analysis_agent
 from agents.database_agent import agent as database_agent
 from agents.llm_agent import agent as llm_agent
 from agents.feedback_agent import agent as feedback_agent
+from dotenv import load_dotenv
 
 if __name__ == "__main__":
+    load_dotenv()
     print("Starting BioAgents Bureau...")
     bureau = Bureau(endpoint=["http://localhost:8000/submit"], port=8000)
     

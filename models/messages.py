@@ -4,7 +4,7 @@ Eliminates 'vibecoded' raw dictionaries and ensures deterministic interfaces.
 """
 
 from typing import List, Optional, Any, Dict
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from uagents import Model
 
 # --- Compound Agent ---
