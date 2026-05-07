@@ -12,7 +12,11 @@
     }
   ],
   "rewrites": [
-    { "source": "/(query|health|molecules|agents/status|experiments/.*)", "destination": "api/index.py" },
-    { "source": "/(.*)", "destination": "/$1" }
+    { "source": "/query", "destination": "/api/index.py" },
+    { "source": "/health", "destination": "/api/index.py" },
+    { "source": "/molecules", "destination": "/api/index.py" },
+    { "source": "/agents/status", "destination": "/api/index.py" },
+    { "source": "/experiments/(.*)", "destination": "/api/index.py" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
