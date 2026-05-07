@@ -17,6 +17,7 @@ from typing import Any
 
 from flask import Flask, g, jsonify, request
 from flask_cors import CORS
+from dotenv import load_dotenv
 
 from exceptions import BioAgentError, InvalidInputError
 from services.analysis_service import AnalysisService
@@ -37,6 +38,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config["JSON_SORT_KEYS"] = False
 CORS(app)
+load_dotenv()
 
 _compound = CompoundService()
 _database = DatabaseService()
