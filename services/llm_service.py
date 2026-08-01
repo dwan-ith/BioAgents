@@ -80,16 +80,57 @@ class LLMService(BioAgentService):
             "objects with keys: molecule, modification, rationale, expected_effect."
         )
         result = self._json_response(prompt, {"base_molecule": canonical})
-        if isinstance(result, list):
+        candidate_rows = result if isinstance(result, list) else result.get("candidates") if isinstance(result, dict) else None
+        if self._valid_legacy_candidates(candidate_rows):
             self.last_source = "openai-primary"
-            return result
-        if isinstance(result, dict) and isinstance(result.get("candidates"), list):
-            self.last_source = "openai-primary"
-            return result["candidates"]
+            return candidate_rows[:3]
         self.last_source = "local-fallback"
         if self.last_error is None and not self.api_key:
             self.last_error = "OPENAI_API_KEY is not set."
         return self._local_candidates(canonical)
+
+    def propose_drug_candidates(
+        self,
+        seed_profile: dict[str, Any],
+        *,
+        objective: str,
+        target: str | None,
+        limit: int,
+    ) -> list[dict[str, str]]:
+        """Return structured hypotheses only; RDKit validation happens downstream."""
+        if not self.api_key:
+            self.last_error = "OPENAI_API_KEY is not set."
+            self.last_source = "local-fallback"
+            return []
+        prompt = (
+            "Propose molecular analog hypotheses for the supplied validated seed. "
+            "Return a JSON object with a candidates array. Each candidate must have "
+            "non-empty name, smiles, intended_change, rationale, and hypothesis strings. "
+            "Do not claim measured activity, safety, novelty, or synthetic feasibility."
+        )
+        result = self._json_response(prompt, {
+            "seed": seed_profile,
+            "objective": objective,
+            "target_context": target,
+            "maximum_candidates": limit,
+        })
+        rows = result.get("candidates") if isinstance(result, dict) else None
+        if not isinstance(rows, list):
+            self.last_source = "local-fallback"
+            return []
+        required = ("name", "smiles", "intended_change", "rationale", "hypothesis")
+        candidates = [
+            {field: item[field].strip() for field in required}
+            for item in rows
+            if isinstance(item, dict)
+            and all(isinstance(item.get(field), str) and item[field].strip() for field in required)
+        ]
+        if not candidates:
+            self.last_source = "local-fallback"
+            self.last_error = "OpenAI did not return any candidates matching the required schema."
+            return []
+        self.last_source = "openai-primary"
+        return candidates[:limit]
 
     def _json_response(self, prompt: str, data: dict[str, Any]) -> dict[str, Any] | list[dict[str, Any]] | None:
         text = self._text_response(prompt + " Respond with JSON only.", data)
@@ -124,8 +165,9 @@ class LLMService(BioAgentService):
                     "content": f"{prompt}\n\nData:\n{json.dumps(data, sort_keys=True)}",
                 },
             ],
-            "response_format": {"type": "json_object"} if "JSON" in prompt else None
         }
+        if "JSON" in prompt:
+            body["response_format"] = {"type": "json_object"}
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -137,13 +179,18 @@ class LLMService(BioAgentService):
                 json=body,
                 timeout=self.timeout,
             )
-        except requests.RequestException as exc:
-            self.last_error = f"OpenAI request failed: {exc}"
+        except requests.RequestException:
+            self.last_error = "OpenAI request failed before a response was received."
             self.last_source = "local-fallback"
             return None
 
         if response.status_code >= 400:
-            self.last_error = f"OpenAI returned HTTP {response.status_code}: {response.text[:300]}"
+            if response.status_code in {401, 403}:
+                self.last_error = "OpenAI credentials were rejected; check the configured API key."
+            elif response.status_code == 429:
+                self.last_error = "OpenAI rate limit or quota was exceeded."
+            else:
+                self.last_error = f"OpenAI returned HTTP {response.status_code}."
             self.last_source = "local-fallback"
             return None
 
@@ -196,6 +243,19 @@ class LLMService(BioAgentService):
             if len(lines) >= 3:
                 return "\n".join(lines[1:-1]).strip()
         return stripped
+
+    @staticmethod
+    def _valid_legacy_candidates(rows: Any) -> bool:
+        required = ("molecule", "modification", "rationale", "expected_effect")
+        return (
+            isinstance(rows, list)
+            and len(rows) == 3
+            and all(
+                isinstance(item, dict)
+                and all(isinstance(item.get(field), str) and item[field].strip() for field in required)
+                for item in rows
+            )
+        )
 
     @staticmethod
     def _local_insight(context_type: str, data: dict[str, Any]) -> str:

@@ -21,12 +21,15 @@ from dotenv import load_dotenv
 
 from exceptions import BioAgentError, InvalidInputError
 from services.analysis_service import AnalysisService
+from services.chembl_service import ChEMBLService
+from services.chemistry_service import ChemistryService
 from services.compound_service import CompoundService
 from services.database_service import DatabaseService
 from services.feedback_service import FeedbackService
 from services.llm_service import LLMService
 from services.reaction_service import ReactionService
 from services.research_service import ResearchService
+from services.workflow_service import DiscoveryWorkflowService
 
 logging.basicConfig(
     level=logging.INFO,
@@ -47,8 +50,27 @@ _research = ResearchService()
 _analysis = AnalysisService()
 _llm = LLMService()
 _feedback = FeedbackService()
+_chemistry = ChemistryService()
+_chembl = ChEMBLService()
+_workflow = DiscoveryWorkflowService(
+    chemistry=_chemistry,
+    database=_database,
+    evidence=_chembl,
+    llm=_llm,
+)
 
-_all_services = [_compound, _database, _reaction, _research, _analysis, _llm, _feedback]
+_all_services = [
+    _compound,
+    _database,
+    _reaction,
+    _research,
+    _analysis,
+    _llm,
+    _feedback,
+    _chemistry,
+    _chembl,
+    _workflow,
+]
 
 
 @app.before_request
@@ -117,6 +139,93 @@ def agents_status():
         }
         for svc in _all_services
     })
+
+
+@app.get("/api/capabilities")
+@app.get("/capabilities")
+def capabilities():
+    return jsonify({
+        "schema_version": "bioagents.capabilities.v1",
+        "capabilities": [
+            {
+                "id": "structure",
+                "label": "Structure analysis",
+                "status": "available",
+                "methods": ["RDKit sanitization", "2D descriptors", "Morgan fingerprints", "catalog alerts"],
+            },
+            {
+                "id": "evidence",
+                "label": "Bioactivity evidence",
+                "status": "network-dependent",
+                "methods": ["PubChem identity resolution", "ChEMBL assay and target retrieval"],
+            },
+            {
+                "id": "analogs",
+                "label": "Analog hypotheses",
+                "status": "available",
+                "methods": ["OpenAI structured proposals when configured", "deterministic RDKit BRICS fallback"],
+            },
+            {
+                "id": "reaction",
+                "label": "Explicit reaction enumeration",
+                "status": "available",
+                "methods": ["user-supplied reaction SMARTS", "sanitized product enumeration"],
+            },
+        ],
+        "unsupported_claims": [
+            "target binding prediction",
+            "toxicity prediction",
+            "clinical safety or drug-drug interaction clearance",
+            "reaction yield, conditions, or synthetic feasibility",
+            "experimental validation or global novelty",
+        ],
+        "openai": {
+            "available": _llm.is_available,
+            "model": _llm.model if _llm.is_available else None,
+            "fallback": "RDKit BRICS",
+        },
+    })
+
+
+@app.post("/api/workflows/discovery")
+@app.post("/workflows/discovery")
+def discovery_workflow():
+    body = _json_body()
+    return jsonify(_workflow.discover(
+        seed=_string(body, "seed", required=True),
+        input_type=_optional_string(body, "input_type") or "auto",
+        objective=_string(body, "objective", required=True),
+        target=_optional_string(body, "target"),
+        max_candidates=_bounded_integer(body, "max_candidates", default=6, minimum=1, maximum=12),
+    ))
+
+
+@app.post("/api/workflows/compare")
+@app.post("/workflows/compare")
+def comparison_workflow():
+    body = _json_body()
+    return jsonify(_workflow.compare(
+        left=_string(body, "left", required=True),
+        right=_string(body, "right", required=True),
+        input_type=_optional_string(body, "input_type") or "auto",
+    ))
+
+
+@app.post("/api/workflows/reaction")
+@app.post("/workflows/reaction")
+def reaction_workflow():
+    body = _json_body()
+    reactants = body.get("reactants")
+    if (
+        not isinstance(reactants, list)
+        or not 1 <= len(reactants) <= 4
+        or any(not isinstance(item, str) or not item.strip() for item in reactants)
+    ):
+        raise InvalidInputError("Field 'reactants' must contain between 1 and 4 non-empty SMILES strings.")
+    return jsonify(_workflow.reaction(
+        reactants=[item.strip() for item in reactants],
+        reaction_smarts=_string(body, "reaction_smarts", required=True),
+    ))
 
 
 @app.get("/api/molecules")
@@ -267,6 +376,26 @@ def _optional_float(body: dict[str, Any], field: str) -> float | None:
         return float(raw)
     except (TypeError, ValueError):
         raise InvalidInputError(f"Field '{field}' must be numeric.")
+
+
+def _bounded_integer(
+    body: dict[str, Any],
+    field: str,
+    *,
+    default: int,
+    minimum: int,
+    maximum: int,
+) -> int:
+    raw = body.get(field, default)
+    if isinstance(raw, bool):
+        raise InvalidInputError(f"Field '{field}' must be an integer.")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError) as exc:
+        raise InvalidInputError(f"Field '{field}' must be an integer.") from exc
+    if value < minimum or value > maximum:
+        raise InvalidInputError(f"Field '{field}' must be between {minimum} and {maximum}.")
+    return value
 
 
 def _attach_compound_ai(result: dict[str, Any]) -> None:

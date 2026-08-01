@@ -1,24 +1,43 @@
-const configuredBase = (process.env.REACT_APP_API_BASE_URL || '').replace(/\/$/, '');
-const isLocalDev = ['3000', '3001'].includes(window.location.port)
-  || ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const REQUEST_TIMEOUT_MS = 45_000;
 
-export const API_BASE_URL = configuredBase
-  || (isLocalDev ? 'http://localhost:5000' : '/api');
+export function resolveApiBaseUrl(configuredBase = '', location = window.location) {
+  const explicit = String(configuredBase || '').trim().replace(/\/$/, '');
+  if (explicit) return explicit;
+  const hostname = String(location?.hostname || '').toLowerCase();
+  const port = String(location?.port || '');
+  const local = hostname === 'localhost' || hostname === '127.0.0.1' || ['3000', '3001'].includes(port);
+  return local ? 'http://localhost:5000' : '/api';
+}
 
+export const API_BASE_URL = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 export const apiUrl = (path) => `${API_BASE_URL}${path}`;
 
-export async function postJSON(path, payload) {
-  const response = await fetch(apiUrl(path), {
+export function postJSON(path, payload) {
+  return requestJSON(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  return parseJSONResponse(response);
 }
 
-export async function getJSON(path) {
-  const response = await fetch(apiUrl(path));
-  return parseJSONResponse(response);
+export function getJSON(path) {
+  return requestJSON(path);
+}
+
+async function requestJSON(path, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(apiUrl(path), { ...options, signal: controller.signal });
+    return await parseJSONResponse(response);
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`API request timed out after ${REQUEST_TIMEOUT_MS / 1000} seconds.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function parseJSONResponse(response) {
@@ -27,13 +46,14 @@ async function parseJSONResponse(response) {
   if (text) {
     try {
       data = JSON.parse(text);
-    } catch (error) {
+    } catch {
       throw new Error(`Invalid JSON from API (${response.status}): ${text.slice(0, 120)}`);
     }
   }
-
   if (!response.ok) {
-    throw new Error(data.error || `API request failed with ${response.status}`);
+    const requestId = response.headers?.get?.('X-Request-ID');
+    const suffix = requestId ? ` (request ${requestId})` : '';
+    throw new Error(`${data.error || `API request failed with ${response.status}`}${suffix}`);
   }
   return data;
 }

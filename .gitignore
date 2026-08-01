@@ -19,3 +19,5 @@ project_summary.txt
 .pytest_cache/
 .coverage
 htmlcov/
+git_log_all.txt
+tmp_git_log.txt

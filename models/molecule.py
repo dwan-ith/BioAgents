@@ -133,6 +133,8 @@ class PubChemCompound:
     xlogp:             Optional[float]
     charge:            Optional[int]
     synonyms:          list[str]
+    connectivity_smiles: Optional[str] = None
+    source_url: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

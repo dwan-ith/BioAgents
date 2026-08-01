@@ -17,7 +17,7 @@ class DatabaseService(BioAgentService):
 
     _BASE_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name"
     _PROPERTIES = (
-        "MolecularFormula,MolecularWeight,IUPACName,IsomericSMILES,XLogP,Charge"
+        "MolecularFormula,MolecularWeight,IUPACName,SMILES,ConnectivitySMILES,XLogP,Charge"
     )
 
     def __init__(self, *, timeout: float = 10.0) -> None:
@@ -28,7 +28,7 @@ class DatabaseService(BioAgentService):
         if not cleaned:
             raise InvalidInputError("PubChem lookup query must be a non-empty string.")
 
-        slug = quote(cleaned)
+        slug = quote(cleaned, safe="")
         payload = self._get_json(f"{self._BASE_URL}/{slug}/property/{self._PROPERTIES}/JSON")
         rows = payload.get("PropertyTable", {}).get("Properties", [])
         if not rows:
@@ -40,21 +40,24 @@ class DatabaseService(BioAgentService):
         if cid_raw is None:
              raise ExternalAPIError("PubChem returned properties but missing CID.")
              
+        cid = int(cid_raw)
         return PubChemCompound(
-            cid=int(cid_raw),
+            cid=cid,
             iupac_name=row.get("IUPACName"),
             molecular_formula=row.get("MolecularFormula"),
             molecular_weight=self._float_or_none(row.get("MolecularWeight")),
-            isomeric_smiles=row.get("IsomericSMILES"),
+            isomeric_smiles=row.get("SMILES") or row.get("IsomericSMILES"),
             xlogp=self._float_or_none(row.get("XLogP")),
             charge=self._int_or_none(row.get("Charge")),
             synonyms=synonyms,
+            connectivity_smiles=row.get("ConnectivitySMILES") or row.get("CanonicalSMILES"),
+            source_url=f"https://pubchem.ncbi.nlm.nih.gov/compound/{cid}",
         )
 
     def _fetch_synonyms(self, slug: str) -> list[str]:
         try:
             payload = self._get_json(f"{self._BASE_URL}/{slug}/synonyms/JSON")
-        except ExternalAPIError:
+        except (ExternalAPIError, ExternalNotFoundError):
             return []
         infos = payload.get("InformationList", {}).get("Information", [])
         if not infos:

@@ -4,7 +4,7 @@ flask-cors>=4.0.0
 
 # External database integration
 requests>=2.31.0
+rdkit>=2024.3.1
 
-# Optional: LLM integration (only required if OPENAI_API_KEY is set)
-# openai>=1.0.0
+# Environment loading for local development
 python-dotenv>=1.0.0

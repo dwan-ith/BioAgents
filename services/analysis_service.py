@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from statistics import mean, median
 
 from exceptions import InvalidInputError
@@ -32,7 +33,17 @@ class AnalysisService(BioAgentService):
             if value is None:
                 skipped.append(candidate.molecule)
                 continue
-            scored.append((float(value), candidate))
+            try:
+                numeric_value = float(value)
+            except (TypeError, ValueError) as exc:
+                raise InvalidInputError(
+                    f"Candidate '{candidate.molecule}' has a non-numeric {criterion} value."
+                ) from exc
+            if not math.isfinite(numeric_value):
+                raise InvalidInputError(
+                    f"Candidate '{candidate.molecule}' has a non-finite {criterion} value."
+                )
+            scored.append((numeric_value, candidate))
 
         scored.sort(key=lambda item: item[0], reverse=not ascending)
         scores = [item[0] for item in scored]

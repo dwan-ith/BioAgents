@@ -9,7 +9,7 @@ from dataclasses import dataclass
 class ServiceIdentity:
     name: str
     seed: str
-    port: int
+    port: int | str
 
     @property
     def address(self) -> str:
@@ -17,7 +17,9 @@ class ServiceIdentity:
 
     @property
     def endpoint(self) -> str:
-        return f"http://localhost:{self.port}/submit"
+        if isinstance(self.port, int):
+            return f"http://localhost:{self.port}/submit"
+        return self.port
 
 
 class BioAgentService:

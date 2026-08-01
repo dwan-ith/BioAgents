@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import tempfile
 import uuid
@@ -29,10 +30,23 @@ class FeedbackService(BioAgentService):
     def log_experiment(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(payload, dict):
             raise InvalidInputError("Experiment payload must be a JSON object.")
+        molecule = payload.get("molecule")
+        if not isinstance(molecule, str) or not molecule.strip():
+            raise InvalidInputError("Field 'molecule' must be a non-empty string.")
+
+        normalized = dict(payload)
+        normalized["molecule"] = molecule.strip()
+        normalized["actual_activity"] = self._unit_interval(
+            payload.get("actual_activity"), "actual_activity", required=True
+        )
+        if "actual_selectivity" in payload:
+            normalized["actual_selectivity"] = self._unit_interval(
+                payload.get("actual_selectivity"), "actual_selectivity", required=False
+            )
         entry = {
             "id": str(uuid.uuid4()),
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "payload": payload,
+            "payload": normalized,
         }
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.path, "a", encoding="utf-8") as handle:
@@ -53,3 +67,21 @@ class FeedbackService(BioAgentService):
                 except json.JSONDecodeError:
                     continue
         return logs
+
+    @staticmethod
+    def _unit_interval(value: Any, field: str, *, required: bool) -> float | None:
+        if value is None:
+            if required:
+                raise InvalidInputError(f"Field '{field}' is required.")
+            return None
+        if isinstance(value, bool):
+            raise InvalidInputError(f"Field '{field}' must be a finite number between 0 and 1.")
+        try:
+            number = float(value)
+        except (TypeError, ValueError) as exc:
+            raise InvalidInputError(
+                f"Field '{field}' must be a finite number between 0 and 1."
+            ) from exc
+        if not math.isfinite(number) or not 0.0 <= number <= 1.0:
+            raise InvalidInputError(f"Field '{field}' must be between 0 and 1.")
+        return number
