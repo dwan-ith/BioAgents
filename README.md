@@ -1,64 +1,131 @@
 # BioAgents
-Decentralized AI Agents for Synthetic Biology
-
 
 ## Overview
-BioAgents is a multi-agent system where each molecule is an autonomous AI agent. Agents communicate using Fetch.ai's uAgents, reason with SingularityNET's MeTTa Knowledge Graphs, and collaborate on Agentverse. This project enables decentralized drug discovery by simulating molecular interactions, predicting reactions, and proposing new compounds.
 
-## Features
-- Autonomous agents for compounds, reactions, research, analysis, and database integration.
-- MeTTa-based knowledge representation for molecular properties and reasoning.
-- Inter-agent communication via Chat Protocol.
-- React frontend with dashboard for visualizing agent interactions and molecular graphs.
-- Integration with ASI:One for user queries.
+BioAgents is a decentralized, evidence-aware molecular discovery workbench designed to operate at the intersection of computational chemistry and language-model-based reasoning. It systematizes the process of drug-analogue postulation by strictly enforcing deterministic molecular standardizations, querying verified public assay databases, executing explicit reaction rules, and proposing machine-validated structural hypotheses. 
 
-## Tech Stack
-- Backend: Python, uAgents, Hyperon (MeTTa), Flask (for frontend proxy).
-- Frontend: React, Material-UI, D3.js.
-- Knowledge: MeTTa files for graphs.
+This repository constitutes a research implementation and is not a clinical decision-support system. It makes no deterministic claims regarding binding affinity, in vivo toxicity, clinical drug-drug interactions, reaction yields, synthetic feasibility, or definitive experimental success. Its primary domain is strictly bound to computational hypothesis formulation and evidence retrieval.
 
-## Setup
-1. Clone the repo: `git clone https://github.com/dwan-ith/BioAgents.git`
-2. Install Python deps: `pip install -r requirements.txt`
-3. Optional: set `OPENAI_API_KEY` to enable OpenAI-primary analysis and generation.
-   Without it, the API still runs with deterministic local fallback logic.
-4. Run backend server: `python server.py`
-5. Install frontend deps: `cd frontend && npm install`
-6. Start frontend: `npm start`
-7. Access dashboard at `http://localhost:3000`
+## Capabilities
 
-The default Flask API does not require a uAgents Bureau. It imports the
-committed `services/` package directly so a fresh clone can run immediately.
+### 1. The Discovery Workflow
 
-## Deploy on Vercel
-This repository is configured for Vercel from the repo root:
+The engine executes a rigorous multi-agent pipeline to extrapolate candidate molecules from a given seed structure:
 
-- `vercel.json` builds the React app from `frontend/`.
-- `api/index.py` exposes the Flask app as a Vercel Python Function.
-- The frontend calls `/api` in production and `http://localhost:5000` in local React dev.
+1. **Resolution & Representation**: Resolves compound nomenclature through the PubChem nomenclature standard or directly accepts canonicalized SMILES representations.
+2. **Canonicalization**: Imposes strict structure sanitization and normalization using the RDKit chemoinformatics framework.
+3. **Property Gatekeeping**: Computes deterministic 2D descriptors, constructs Morgan fingerprints, evaluates Quantitative Estimate of Druglikeness (QED), applies Lipinski Rule-of-Five and Veber filters, and flags PAINS/BRENK structural alerts.
+4. **Evidence Retrieval**: Maps standard InChIKeys directly to the ChEMBL ontology, synchronously pulling bounded assay profiles, target evidence, and immutable provenance URLs.
+5. **Generative Hypothesis Engine**: Interfaces with external Large Language Models (LLMs) configured as the primary generation heuristic, when enabled, to synthesize conceptually justifiable analogue hypotheses.
+6. **Integrity Validation**: Strictly rejects malformed, topologically disconnected, isomorphic, or chemically inviable analogue structures before inclusion in the output result set.
+7. **Deterministic Fallback (BRICS)**: Compensates for upstream generation failures by dynamically employing RDKit-based BRICS (Breaking of Retrosynthetically Interesting Chemical Substructures) fragmentation and recombination of the seed molecule.
+8. **Triage Scoring**: Assigns a triage score derived from a composite heuristic of QED scores, structural similarity (Tanimoto coefficients), and deterministic property gates. This metric strictly represents a prioritization heuristic, not pharmacological activity.
+9. **Traceability**: Delivers a fully resolved execution trace encapsulating timings, system provenance, failure counts, and rigorously circumscribed capability claims.
 
-In Vercel project settings, use the repository root as the Root Directory and keep the detected
-framework as "Other" if prompted. Add `OPENAI_API_KEY` as an environment variable only if you want
-OpenAI-primary analysis; otherwise the local fallback still works. For local Vercel testing, use
-Vercel CLI `48.2.10` or newer for Flask support.
+### 2. Empirical Compound Comparison
 
-## uAgents Runtime
-Run these only if you want the standalone distributed-agent experiment:
+The comparison subsystems compute precise deterministic 2D topological overlaps and descriptor variances between arbitrary molecular inputs. It cross-references the independently retrieved ChEMBL target assays for both compounds, reporting corroborated target overlaps as potential mechanistic intersections. Absence of overlapping targets is explicitly bounded as `INSUFFICIENT_EVIDENCE`, actively avoiding false confirmations of non-interaction.
 
-   - `pip install -r requirements-agents.txt`
-   - `python main.py` to start all agents in one Bureau, or
-   - run agents in separate terminals:
-   - `python agents/compound_agent.py`
-   - `python agents/reaction_agent.py`
-   - `python agents/research_agent.py`
-   - `python agents/analysis_agent.py`
-   - `python agents/database_agent.py`
+### 3. Transformation and Reaction Rules
 
-For ASI:One integration, ensure agents are registered on Agentverse with Chat Protocol enabled.
+BioAgents exposes engines for explicit chemical transformations. Operating strictly on formalized RDKit reaction SMARTS matrices and reactant SMILES structures, the agent validates valency, sequentially applies transformations, forces chemical sanitization of outputs, eliminates symmetrical duplicates, and returns enumerations. It operates agnostically of inferred experimental conditions, predicted yields, or catalyst selection parameters.
 
-## Tests
-Run the backend regression suite:
+## Agent System Architecture
+
+The fundamental HTTP runtime relies on cooperative, synchronous abstractions to maintain reliability in stateless and serverless infrastructures:
+
+* **OrchestratorAgent**: Orchestrates cross-agent lifecycle management for discovery, comparative, and reaction procedures.
+* **ChemistryAgent**: Manages exhaustive structural validation, RDKit integrations, descriptor computations, and geometric evaluation.
+* **EvidenceAgent**: Manages ChEMBL querying logic, payload deserialization, and bounding of empirical bioactivity records.
+* **DatabaseAgent**: Resolves molecular queries through PubChem subsystems to retrieve validated identities and external parameter constants.
+* **LLMAgent**: Bridges requests to language model providers (e.g., OpenAI) for generative heuristics, equipped with automated protocol degradation functions.
+* **Legacy Compatibility**: Houses legacy catalyst and enzyme agent archetypes referencing the initial MeTTa knowledge-base design.
+
+For distributed topologies, the system includes a `uAgents` integration allowing structured IPC bridging over typed message protocols (`DiscoveryWorkflowRequest` / `DiscoveryWorkflowResponse`), permitting cross-cluster discovery. BioAgents transparently specifies the active execution mode in outgoing payloads.
+
+## System Interfaces and Application Programming Interface (API)
+
+Primary Web Endpoints:
+
+```text
+GET  /api/health
+GET  /api/capabilities
+GET  /api/agents/status
+POST /api/workflows/discovery
+POST /api/workflows/compare
+POST /api/workflows/reaction
+```
+
+Standard Discovery Request Structure:
+
+```json
+{
+  "seed": "aspirin",
+  "input_type": "name",
+  "objective": "Explore structurally valid analogues with balanced oral drug-like properties.",
+  "target": "PTGS2",
+  "max_candidates": 6
+}
+```
+
+The system degrades gracefully. Standalone operations against SMILES matrices function entirely offline. LLM unavailability, API malformation, or network timeouts automatically resolve to deterministic offline BRICS permutation strategies without critical process interruption.
+
+## Deployment and Administration
+
+### Environment Prerequisites
+
+The system is tested against Python 3.10+ and Node.js 22.12+.
+
+### Initialization
+
+```bash
+git clone https://github.com/dwan-ith/BioAgents.git
+cd BioAgents
+python -m pip install -r requirements.txt
+cp .env.example .env
+python server.py
+```
+
+Frontend Initialization:
+
+```bash
+cd frontend
+npm ci
+npm start
+```
+
+Access the dashboard natively via `http://localhost:3000`. 
+Environment variables (e.g., `OPENAI_API_KEY`, `OPENAI_MODEL`) must exclusively reside on secure backends; the client boundary does not negotiate secrets.
+
+### Distributed `uAgents` Runtime
+
+```bash
+python -m pip install -r requirements-agents.txt
+python main.py
+```
+
+Administrators must populate private `BIOAGENTS_<AGENT>_SEED` identifiers via environment secrets prior to production registration. Default repository identities encapsulate public primitives strictly for testing.
+
+### Stateless Edge Infrastructure (Vercel)
+
+The system deploys natively via `vercel.json`, facilitating automatic Vite frontend builds and transparently routing `/api/*` requests to the Flask lambda. Configurations dictate an arbitrary maximum timeout limit (defaulting to 60 seconds) to ensure complex remote evidence lookups complete reliably. Log retention across cold-starts relies on persistent off-site logging solutions.
+
+## Quality Assurance and Regression Diagnostics
+
+The codebase includes comprehensive test vectors analyzing failure-mode responses for molecular abstractions.
 
 ```bash
 python -m unittest discover -s tests -v
+python -m ruff check server.py agents services knowledge models tests api
+
+cd frontend
+npm ci
+npm test
+npm run build
 ```
+
+The coverage matrices validate parsing determinism, descriptor fidelity, uniqueness filters, transformation constraints, evidence sanitation, and Vercel boundary specifications.
+
+## Scientific and Medical Disclaimers
+
+The structural candidates materialized by this framework explicitly constitute computational hypotheses. Toxicological alerts identify generalized structural risks and are not specific toxicity predictors. Remote bioactivity records from ChEMBL reflect heterogeneous methodologies necessitating rigorous manual assessment. Topological similarity profiles never guarantee pharmacological safety. Absolute verification protocols necessitate domain expert interrogation, comprehensive synthesis planning, and definitive ex vivo/in vivo validation paradigms.
